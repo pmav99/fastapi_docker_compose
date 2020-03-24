@@ -1,0 +1,84 @@
+# vi: ft=sh
+
+set -xe
+
+########################
+# Docker + docker-compose configuration options
+########################
+# don't change these:
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+export COMPOSE_PATH_SEPARATOR=:
+
+# you may change this:
+export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml:docker-compose.build.yml
+
+########################
+# Common options
+# you should only have to set these variables once (when you start a new project)
+########################
+project_name='fastapi_template'
+registry_repository='registry.gitlab.com/pmav99/fastapi_template'
+developer_name='changeme'
+
+########################
+#  Make sure that these variables are different on each deploy environment (dev/staging/prod)
+########################
+deploy_environment='dev'
+base_port=58100
+
+########################
+# The docker-compose project name affects the name of containers, networks, volumes etc.
+# Since we want to be able to deploy multiple environements in the same host
+# it is important to add the `deploy_environemnt` to the compose project name.
+########################
+export COMPOSE_PROJECT_NAME="${project_name}"_"${deploy_environment}_${developer_name}"
+export WEB_IMAGE_NAME="${registry_repository}/web:${deploy_environment}-${developer_name}"
+export PROXY_IMAGE_NAME="${registry_repository}/proxy:${deploy_environment}-${developer_name}"
+#export DB_IMAGE_NAME="${registry_repository}/db:${deploy_environment}-${developer_name}"
+
+########################
+# These are used by docker build
+# The container uses the `USER_ID:GROUP_ID` of the user that executes `docker build`
+# This way, on the `dev` deploy environment we can mount the source code from the
+# host without running into permissions problems
+########################
+export DEPLOY_ENV="${deploy_environment}"
+export USER_NAME="${developer_name}"
+export USER_ID=$(id -u)
+export GROUP_ID=$(id -g)
+
+########################
+# These are used by docker run
+########################
+export RUNTIME_UID_GID="${USER_ID}:${GROUP_ID}"
+
+########################
+# Ports should be different on each deploy environment in order to make it possible
+# to deploy dev/staging/prod on the same docker daemon.
+########################
+let 'WEB_PORT=base_port+1'
+let 'PROXY_HTTP_PORT=base_port+2'
+let 'PROXY_HTTPS_PORT=base_port+3'
+#let 'DB_HTTP_PORT=base_port+2'
+
+export WEB_PORT
+export PROXY_HTTP_PORT
+export PROXY_HTTPS_PORT
+#export DB_HTTP_PORT
+
+########################
+# These affect the runtime!
+########################
+
+# gunicorn config
+export LOG_LEVEL='debug'
+
+# fastapi configuration
+export PROJECT_NAME='FastAPI template'
+export BACKEND_CORS_ORIGINS='
+http://localhost
+https://localhost
+'
+
+set +xe

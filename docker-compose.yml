@@ -1,0 +1,41 @@
+---
+
+version: '3.7'
+services:
+
+  web:
+    # base image: tiangolo/uvicorn-gunicorn-fastapi:python3.7
+    image: "${WEB_IMAGE_NAME}"
+    user: root  # we use gosu to switch to the user defined by ${RUNTIME_UID_GID}
+    entrypoint: "/usr/local/bin/entrypoint_inject.sh"
+    command: uvicorn --use-colors --access-log --proxy-headers --log-level info --workers 3 --port 8000 app:app
+    ports:
+      - published: "${WEB_PORT}"
+        target: 8000
+    environment:
+      - RUNTIME_UID_GID
+      # fastapi
+      - PROJECT_NAME
+      - BACKEND_CORS_ORIGINS
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: '512MB'
+
+
+  proxy:
+    image: "${PROXY_IMAGE_NAME}"
+    user: root
+    depends_on:
+      - web
+    ports:
+      - published: "${PROXY_HTTP_PORT}"
+        target: 80
+      - published: "${PROXY_HTTPS_PORT}"
+        target: 443
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: '512MB'
